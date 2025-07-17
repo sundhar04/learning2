@@ -6,7 +6,7 @@ def summ():
     b=20
     c=5
     sum=a+b+c
-    return f"the total is helllo {sum}"
+    return f"the total isss {sum}"
 if __name__ == "__main__":
     app.run(host="0.0.0.0",port=5000)
 #docker build -t yourusername/yourimage:latest .
