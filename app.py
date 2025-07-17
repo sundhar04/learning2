@@ -3,8 +3,8 @@ app= Flask(__name__)
 @app.route('/',methods=['GET'])
 def summ():
     a=20
-    b=20
-    c=5
+    b=30
+    c=-5
     sum=a+b+c
     return f"the total issssssss {sum}"
 if __name__ == "__main__":
