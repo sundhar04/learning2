@@ -14,14 +14,24 @@ pipeline {
     stages {
         stage("Checkout") {
             steps {
-                // Checkout the repository
-                checkout scm
+                // Checkout the repository - this tells Jenkins which repo to monitor
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [[$class: 'CleanBeforeCheckout']],
+                    submoduleCfg: [],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/sundhar04/learning2.git',
+                        credentialsId: 'github-credentials'
+                    ]]
+                ])
             }
         }
         stage("Deploy to EC2") {
             steps {
                 sshagent(['ec2-ssh-key']) {
-                    withCredentials([string(credentialsId: 'githubcredd', variable: 'GITHUB_TOKEN')]) {
+                    withCredentials([usernamePassword(credentialsId: 'githubcredd', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
                         sh """
 ssh -o StrictHostKeyChecking=no \$EC2_USER@\$EC2_HOST << "EOF"
 set -e
@@ -51,7 +61,7 @@ echo "Cloning or updating repo"
 if [ -d "$APP_DIR" ]; then
     cd "$APP_DIR" && git pull origin main && cd ..
 else
-    git clone https://sundhar04:\$GITHUB_TOKEN@github.com/sundhar04/learning2.git
+    git clone https://\$GIT_USERNAME:\$GIT_PASSWORD@github.com/sundhar04/learning2.git
 fi
 
 echo "Cleaning old containers and images"
