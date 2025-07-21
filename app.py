@@ -9,5 +9,6 @@ def summ():
     return f"the total is ilu {sum}"
 if __name__ == "__main__":
     app.run(host="0.0.0.0",port=5000)
+    
 #docker build -t yourusername/yourimage:latest .
 #docker push yourusername/yourimage:latest
