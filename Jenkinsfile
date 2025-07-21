@@ -1,32 +1,22 @@
 pipeline {
     agent any
-    triggers {
-        githubPush()
-        pollSCM('H/5 * * * *') // Poll every 5 minutes
-        
-    }
     environment {
-        EC2_HOST = "ec2-18-175-250-133.eu-west-2.compute.amazonaws.com"
+        EC2_HOST = "ec2-18-175-181-246.eu-west-2.compute.amazonaws.com"
         EC2_USER = "ubuntu"
         APP_DIR  = "learning2"
         IMAGE_NAME = "sundhar04/githubimage:latest"
-        CONTAINER_NAME = "my_app_container"
+        CONTAINER_NAME = "my_app_container_${env.BRANCH_NAME.replaceAll('/', '_')}"
+        // PORT_NUMBER will be set dynamically in the script block
     }
     stages {
         stage("Checkout") {
             steps {
-                // Checkout the repository - this tells Jenkins which repo to monitor
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'CleanBeforeCheckout']],
-                    submoduleCfg: [],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/sundhar04/learning2.git',
-                        credentialsId: 'github-credentials'
-                    ]]
-                ])
+               checkout scmGit(branches: [[name: '*/${env.BRANCH_NAME}']], extensions: [], userRemoteConfigs: [[credentialsId: 'githubcredd', url: 'https://github.com/sundhar04/learning2.git']])
+               script {
+                   // Set PORT_NUMBER dynamically
+                   env.PORT_NUMBER = getBranchPort(env.BRANCH_NAME)
+                   echo "Branch: ${env.BRANCH_NAME}, Port: ${env.PORT_NUMBER}, Container: ${env.CONTAINER_NAME}"
+               }
             }
         }
         stage("Deploy to EC2") {
@@ -37,7 +27,6 @@ pipeline {
 ssh -o StrictHostKeyChecking=no \$EC2_USER@\$EC2_HOST << "EOF"
 set -e
 cd /home/ubuntu
-
 echo "Checking for Docker"
 if ! command -v docker &> /dev/null; then
     echo "[!] Docker not found. Installing Docker..."
@@ -57,34 +46,29 @@ if ! command -v docker &> /dev/null; then
 else
     echo "Docker is already installed"
 fi
-
 echo "Cloning or updating repo"
 if [ -d "$APP_DIR" ]; then
-    cd "$APP_DIR" && git pull origin main && cd ..
+    cd "$APP_DIR" && git pull origin ${env.BRANCH_NAME} && cd ..
 else
-    git clone https://\$GIT_USERNAME:\$GIT_PASSWORD@github.com/sundhar04/learning2.git
+    git clone -b ${env.BRANCH_NAME} https://\$GIT_USERNAME:\$GIT_PASSWORD@github.com/sundhar04/learning2.git
 fi
-
-echo "Cleaning old containers and images"
-sudo docker stop "$CONTAINER_NAME" || true
-sudo docker rm "$CONTAINER_NAME" || true
+echo "Cleaning old containers and images for branch ${env.BRANCH_NAME}"
+sudo docker stop "${env.CONTAINER_NAME}" || true
+sudo docker rm "${env.CONTAINER_NAME}" || true
 sudo docker rmi "$IMAGE_NAME" || true
-
 echo "Building Docker image"
 cd "$APP_DIR"
 sudo docker build -t "$IMAGE_NAME" .
-
-echo "Freeing port 8080 from any running container"
-EXISTING_CONTAINER=\$(sudo docker ps -q --filter "publish=8080")
+echo "Freeing port ${env.PORT_NUMBER} from any running container"
+EXISTING_CONTAINER=\$(sudo docker ps -q --filter "publish=${env.PORT_NUMBER}")
 if [ ! -z "\$EXISTING_CONTAINER" ]; then
-    echo "Found container using port 8080: \$EXISTING_CONTAINER"
+    echo "Found container using port ${env.PORT_NUMBER}: \$EXISTING_CONTAINER"
     sudo docker stop \$EXISTING_CONTAINER
     sudo docker rm \$EXISTING_CONTAINER
 fi
-
 echo "Running Docker container"
-sudo docker run -d --name "$CONTAINER_NAME" -p 8080:5000 "$IMAGE_NAME"
-echo "Deployment complete. App running on port 8080"
+sudo docker run -d --name "${env.CONTAINER_NAME}" -p ${env.PORT_NUMBER}:5000 "$IMAGE_NAME"
+echo "Deployment complete. App running on port ${env.PORT_NUMBER}"
 EOF
                         """
                     }
@@ -99,5 +83,27 @@ EOF
         failure {
             echo "deployment failed"
         }
+    }
+}
+
+// Function to determine port based on branch name
+def getBranchPort(branchName) {
+    switch(branchName) {
+        case 'main':
+        case 'master':
+            return '8080'
+        case 'develop':
+        case 'dev':
+            return '8081'
+        case 'staging':
+        case 'stage':
+            return '8082'
+        case 'testing':
+        case 'test':
+            return '8083'
+        default:
+            // For feature branches, use a hash-based port to avoid conflicts
+            def hash = Math.abs(branchName.hashCode()) % 1000
+            return (8100 + hash).toString()
     }
 }
