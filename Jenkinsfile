@@ -3,6 +3,7 @@ pipeline {
     triggers {
         githubPush()
         pollSCM('H/5 * * * *') // Poll every 5 minutes
+        
     }
     environment {
         EC2_HOST = "ec2-18-175-250-133.eu-west-2.compute.amazonaws.com"
