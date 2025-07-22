@@ -3,7 +3,7 @@ pipeline {
     environment {
         EC2_HOST = "ec2-18-175-181-246.eu-west-2.compute.amazonaws.com"
         EC2_USER = "ubuntu"
-        APP_DIR  = "learning2"
+        APP_DIR  = "learning3"
         IMAGE_NAME = "sundhar04/githubimage:latest"
         CONTAINER_NAME = "my_app_container_${env.BRANCH_NAME.replaceAll('/', '_')}"
         // PORT_NUMBER will be set dynamically in the script block
@@ -11,7 +11,7 @@ pipeline {
     stages {
         stage("Checkout") {
             steps {
-               checkout scmGit(branches: [[name: '*/${env.BRANCH_NAME}']], extensions: [], userRemoteConfigs: [[credentialsId: 'githubcredd', url: 'https://github.com/sundhar04/learning2.git']])
+               checkout scmGit(branches: [[name: '*/${env.BRANCH_NAME}']], extensions: [], userRemoteConfigs: [[credentialsId: 'githubcreddddd', url: 'https://github.com/sundhar04/learning3.git']])
                script {
                    // Set PORT_NUMBER dynamically
                    env.PORT_NUMBER = getBranchPort(env.BRANCH_NAME)
@@ -95,7 +95,7 @@ def getBranchPort(branchName) {
             return '8080'
         case 'develop':
             return '8081'
-        case 'dev':
+        case 'second':
             return '8081'
         case 'staging':
             return '8082'
