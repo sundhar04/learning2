@@ -90,15 +90,19 @@ EOF
 def getBranchPort(branchName) {
     switch(branchName) {
         case 'main':
+            return '8080'
         case 'master':
             return '8080'
         case 'develop':
+            return '8081'
         case 'dev':
             return '8081'
         case 'staging':
+            return '8082'
         case 'stage':
             return '8082'
         case 'testing':
+            return '8083'
         case 'test':
             return '8083'
         default:
